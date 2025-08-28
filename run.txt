@@ -1,0 +1,3 @@
+terminal run command:
+
+python "Source Code/main.py" --split_dataset --input_dir ./ --output_dir ./ --log_dir ./ --experiment 1
