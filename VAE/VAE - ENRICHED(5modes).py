@@ -217,12 +217,12 @@ def train_vae(csv_file, num_modes=5, epochs=100, batch_size=128, learning_rate=1
     # --- Environment (for reward logging only) ---
     env = VesselEnvironment()
     env.reset()
-    latent_history = []
 
     # --- Training loop ---
     for epoch in range(epochs):
         total_loss = total_recon = total_kl = total_reward = 0.0
         steps = 0
+        latent_history = []  # reset every epoch so plot = 1 trajectory
 
         for step, batch_x in enumerate(dataset):
             steps += 1
@@ -242,7 +242,7 @@ def train_vae(csv_file, num_modes=5, epochs=100, batch_size=128, learning_rate=1
             grads = tape.gradient(loss, vars_)
             optimizer.apply_gradients(zip(grads, vars_))
 
-            # Track latent choice (for visualization)
+            # Track latent choice (per step)
             latent_mode = int(tf.argmax(z, axis=-1).numpy()[0])
             latent_history.append(latent_mode)
 
@@ -262,14 +262,15 @@ def train_vae(csv_file, num_modes=5, epochs=100, batch_size=128, learning_rate=1
             f"AvgReward (log only): {total_reward/steps:.6f}"
         )
 
-        # --- Plot latent trajectory ---
-        plt.figure(figsize=(12, 3))
-        plt.plot(latent_history, marker='o', linestyle='-')
-        plt.title("Latent Modes During Training")
-        plt.xlabel("Step")
-        plt.ylabel("Latent Mode")
-        plt.savefig(f"../plots/latent_modes_epoch{epoch+1}.png")
-        plt.close()
+        # --- Plot latent trajectory every 50 epochs ---
+        if (epoch + 1) % 50 == 0 or (epoch + 1) == epochs:
+            plt.figure(figsize=(12, 3))
+            plt.plot(latent_history, marker='o', linestyle='-')
+            plt.title(f"Latent Modes Trajectory (Epoch {epoch + 1})")
+            plt.xlabel("Step in Trajectory")
+            plt.ylabel("Latent Mode")
+            plt.savefig(f"../plots/latent_modes_epoch{epoch + 1}.png")
+            plt.close()
 
         # --- Save checkpoint ---
         if (epoch + 1) % 50 == 0 or (epoch + 1) == epochs:
