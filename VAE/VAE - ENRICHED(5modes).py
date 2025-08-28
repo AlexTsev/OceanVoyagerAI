@@ -382,7 +382,7 @@ if __name__ == '__main__':
     if not os.path.exists(csv_file):
         raise FileNotFoundError(f"Dataset not found at {csv_file}")
 
-    encoder, decoder, X_columns = train_vae(csv_file, num_modes=5, epochs=2000, batch_size=128)
+    encoder, decoder, X_columns = train_vae(csv_file, num_modes=5, epochs=2000, batch_size=256)
     print("🤖🚢 Agent Vessel completed training!! 🚢")
     test_vae(encoder, decoder, X_columns, num_trajectories=50)
 
