@@ -1,7 +1,7 @@
 OceanVoyagerAI – Custom Demo License
 ====================================
 
-Copyright (c) 2025 [Your Name or Organization]
+Copyright (c) 2025 [Alexandros Tsevrenis]
 
 This software project ("OceanVoyagerAI") and all associated code, models, and
 datasets are provided strictly for demonstration, educational, and research
