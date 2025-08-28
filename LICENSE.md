@@ -2,9 +2,9 @@
 
 # 
 
-# \*\*Project Name:\*\* OceanVoyagerAI  
+# \*\*Project Name:\*\* OceanVoyagerAI
 
-# \*\*Author:\*\* \[Your Name]  
+# \*\*Author:\*\* \[Alexandros Tsevrenis]
 
 # \*\*Date:\*\* 2025
 
@@ -30,13 +30,13 @@
 
 # 
 
-# \- The dataset included in this project is \*\*entirely handcrafted\*\*.  
+# \- The dataset included in this project is \*\*entirely handcrafted\*\*.
 
-# \- It is \*\*not real-world data\*\*.  
+# \- It is \*\*not real-world data\*\*.
 
-# \- The dataset \*\*simulates vessel trajectories\*\* but is \*\*not realistic at this point\*\*.  
+# \- The dataset \*\*simulates vessel trajectories\*\* but is \*\*not realistic at this point\*\*.
 
-# \- Any resemblance to actual ship movements is purely coincidental.  
+# \- Any resemblance to actual ship movements is purely coincidental.
 
 # 
 
@@ -50,8 +50,7 @@
 
 This project relies on the following Python libraries:
 
-absl-py==2.3.1
-===
+# absl-py==2.3.1
 
 # astunparse==1.6.3
 
@@ -181,9 +180,16 @@ absl-py==2.3.1
 
 # Werkzeug==3.1.3
 
-wrapt==1.14.2
+# wrapt==1.14.2
 
-## 4. Algorithms Used
+
+
+
+
+
+
+## 4\. Algorithms Used
+
 ===
 
 # 
@@ -192,27 +198,27 @@ wrapt==1.14.2
 
 # 
 
-# 1\. \*\*Variational Autoencoder (VAE) with Gumbel-Softmax\*\*  
+# 1\. \*\*Variational Autoencoder (VAE) with Gumbel-Softmax\*\*
 
-# &nbsp;  - Reference: Eric Jang, Shixiang Gu, Ben Poole. \*Categorical reparameterization with Gumbel-Softmax\*. arXiv preprint arXiv:1611.01144, 2016.
-
-# 
-
-# 2\. \*\*Generative Adversarial Imitation Learning (GAIL)\*\*  
-
-# &nbsp;  - Reference: Ho, J., Ermon, S. \*Generative adversarial imitation learning\*. In: NIPS, pp. 4565–4573, 2016.
+#    - Reference: Eric Jang, Shixiang Gu, Ben Poole. \*Categorical reparameterization with Gumbel-Softmax\*. arXiv preprint arXiv:1611.01144, 2016.
 
 # 
 
-# 3\. \*\*Directed-Info GAIL (D-Info GAIL)\*\*  
+# 2\. \*\*Generative Adversarial Imitation Learning (GAIL)\*\*
 
-# &nbsp;  - Reference: Mohit Sharma, Arjun Sharma, Nicholas Rhinehart, Kris M. Kitani. \*Directed-Info GAIL\*.
+#    - Reference: Ho, J., Ermon, S. \*Generative adversarial imitation learning\*. In: NIPS, pp. 4565–4573, 2016.
 
 # 
 
-# 4\. \*\*Aircraft Trajectory Deep Imitation Learning\*\* (used for reference methodology)  
+# 3\. \*\*Directed-Info GAIL (D-Info GAIL)\*\*
 
-# &nbsp;  - Reference: Alevizos Bastas, Theocharis Kravaris, George A. Vouros. \*Data Driven Aircraft Trajectory Prediction with Deep Imitation Learning\*, CoRR abs/2005.07960 (2020).
+#    - Reference: Mohit Sharma, Arjun Sharma, Nicholas Rhinehart, Kris M. Kitani. \*Directed-Info GAIL\*.
+
+# 
+
+# 4\. \*\*Aircraft Trajectory Deep Imitation Learning\*\* (used for reference methodology)
+
+#    - Reference: Alevizos Bastas, Theocharis Kravaris, George A. Vouros. \*Data Driven Aircraft Trajectory Prediction with Deep Imitation Learning\*, CoRR abs/2005.07960 (2020).
 
 # 
 
@@ -224,13 +230,13 @@ wrapt==1.14.2
 
 # 
 
-# 1\. This project is a \*\*demo only\*\*.  
+# 1\. This project is a \*\*demo only\*\*.
 
-# 2\. You \*\*cannot use it for commercial purposes\*\*.  
+# 2\. You \*\*cannot use it for commercial purposes\*\*.
 
-# 3\. You \*\*cannot redistribute the dataset or trained models\*\*.  
+# 3\. You \*\*cannot redistribute the dataset or trained models\*\*.
 
-# 4\. You \*\*cannot claim this work as your own\*\*.  
+# 4\. You \*\*cannot claim this work as your own\*\*.
 
 # 5\. You may \*\*study the code, experiment with it, and learn from it\*\*.
 
