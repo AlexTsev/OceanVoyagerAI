@@ -184,7 +184,7 @@ def vae_loss(x_true, x_pred, logits, recon_weight=1.0, kl_weight=0.1):
 # =========================
 # Training
 # =========================
-def train_vae(csv_file, num_modes=5, epochs=100, batch_size=128, learning_rate=1e-3):
+def train_vae(csv_file, num_modes=5, epochs=100, batch_size=128, learning_rate=1e-4):
     # --- Load & normalize data ---
     X, y, X_columns = load_dataset(csv_file)
     print("🤖🚢 Agent Vessel started training... 🚢")
@@ -234,7 +234,7 @@ def train_vae(csv_file, num_modes=5, epochs=100, batch_size=128, learning_rate=1
 
             with tf.GradientTape() as tape:
                 logits = encoder(batch_x)
-                z = sample_gumbel_softmax(logits, temperature=0.5)
+                z = sample_gumbel_softmax(logits, temperature=0.7)
                 x_recon = decoder(z)
                 loss, recon, kl = vae_loss(batch_x, x_recon, logits)
 
@@ -313,7 +313,7 @@ def test_vae(encoder, decoder, X_columns, num_trajectories=50, trajectory_length
 
             # --- forward pass through VAE ---
             logits = encoder(obs_scaled)
-            z = sample_gumbel_softmax(logits, temperature=0.5, hard=True)
+            z = sample_gumbel_softmax(logits, temperature=0.7, hard=True)
             x_recon = decoder(z)
 
             # --- convert reconstruction to action ---
@@ -393,5 +393,4 @@ if __name__ == '__main__':
     #encoder, decoder, X_columns = train_vae(csv_file, num_modes=5, epochs=2000, batch_size=256)
     #print("🤖🚢 Agent Vessel completed training!! 🚢")
     #test_vae(encoder, decoder, X_columns, num_trajectories=50)
-
     test_withloaded_weights()
