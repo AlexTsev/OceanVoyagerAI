@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from math import radians, degrees, sin, cos, asin, atan2, sqrt, log, tan, atan, exp, fabs, pi
+import numpy as np
 
 EARTH_MEAN_RADIUS = 6371008.8
 EARTH_EQUATORIAL_RADIUS = 6378137.0
@@ -85,3 +86,32 @@ def along_track_distance(start, end, point):
     t = np.clip(t, 0, 1)
     proj = start + t * line_vec
     return np.linalg.norm(point - proj)
+
+
+# ---------------------------
+# Along-track distance for cross-track penalty
+# ---------------------------
+def cross_track_distance_nm(start, end, point):
+    """
+    Compute cross-track distance (nm) from point to the great-circle line start->end.
+    Returns distance in nautical miles.
+    """
+    # Convert everything to radians
+    lat1, lon1 = radians(start[0]), radians(start[1])
+    lat2, lon2 = radians(end[0]), radians(end[1])
+    lat3, lon3 = radians(point[0]), radians(point[1])
+
+    # Distance from start to point
+    d13 = distance(start, point)  # meters
+    if d13 == 0:
+        return 0.0
+
+    # Bearings
+    theta13 = radians(bearing(start, point))
+    theta12 = radians(bearing(start, end))
+
+    # Cross-track distance formula (meters)
+    d_xt = asin(sin(d13 / EARTH_MEAN_RADIUS) * sin(theta13 - theta12)) * EARTH_MEAN_RADIUS
+
+    # Return in nautical miles
+    return abs(d_xt) / 1852.0
