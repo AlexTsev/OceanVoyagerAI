@@ -118,9 +118,13 @@ def unnormalize_actions(y_scaled, scaler):
 # =========================
 def build_encoder(input_dim, num_modes):
     inputs = layers.Input(shape=(input_dim,))
-    x = layers.Dense(128, activation='relu')(inputs)
-    x = layers.Dense(64, activation='relu')(x)
-    logits = layers.Dense(num_modes)(x)
+    x = layers.Dense(256)(inputs)
+    x = layers.LeakyReLU(alpha=0.1)(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Dense(128)(x)
+    x = layers.LeakyReLU(alpha=0.1)(x)
+    x = layers.BatchNormalization()(x)
+    logits = layers.Dense(num_modes)(x)  # output logits for Gumbel-Softmax
     return Model(inputs, logits, name='encoder')
 
 # =========================
@@ -128,9 +132,13 @@ def build_encoder(input_dim, num_modes):
 # =========================
 def build_decoder(num_modes, output_dim):
     latent_inputs = layers.Input(shape=(num_modes,))
-    x = layers.Dense(64, activation='relu')(latent_inputs)
-    x = layers.Dense(128, activation='relu')(x)
-    outputs = layers.Dense(output_dim, activation='linear')(x)
+    x = layers.Dense(128)(latent_inputs)
+    x = layers.LeakyReLU(alpha=0.1)(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Dense(256)(x)
+    x = layers.LeakyReLU(alpha=0.1)(x)
+    x = layers.BatchNormalization()(x)
+    outputs = layers.Dense(output_dim, activation='linear')(x)  # reconstruct original features
     return Model(latent_inputs, outputs, name='decoder')
 
 # =========================
