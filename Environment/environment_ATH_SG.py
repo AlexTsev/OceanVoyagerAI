@@ -1,7 +1,7 @@
 # vessel_environment.py
 import numpy as np
 import random
-from geo.geo import distance
+from geo.geo import distance, cross_track_distance_nm
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), 'Source_Code'))
 from Source_Code.utils import normalize_observation, normalize_action, unnormalize_observation, unnormalize_action, load_dataset
@@ -17,7 +17,7 @@ conf = {
     'time_step_minutes': 5,
     'max_speed_kn': 22,
     'min_speed_kn': 10,
-    'mbr_buffer_deg': 2.5,          # bounding box buffer (deg) around origin-destination
+    'mbr_buffer_deg': 2.0,          # bounding box buffer (deg) around origin-destination
     'destination_tolerance_nm': 1.0, # when to consider "arrived"
 }
 
@@ -305,23 +305,53 @@ class VesselEnvironment:
             self.state['fuel_cost_usd'] = float(self.fuel_cost_usd[t])
 
         # --- 6) Remaining distance (nm) and reward shaping ---
-        self.state['remaining_distance_nm'] = distance((self.state['lat'], self.state['lon']), self.destination) / 1852.0
+        self.state['remaining_distance_nm'] = distance(
+            (self.state['lat'], self.state['lon']),
+            self.destination
+        ) / 1852.0
 
-        # Basic reward: negative distance to the next expert point (imitation)
         reward = 0.0
+
         if hasattr(self, "lat") and len(self.lat) > self.time_step + 1:
             idx_next = min(self.time_step + 1, conf['samples_per_vessel'] - 1)
             expert_lat, expert_lon = self.lat[idx_next], self.lon[idx_next]
-            distance_error = distance((self.state['lat'], self.state['lon']), (expert_lat, expert_lon)) / 1852.0
+
+            # 1) Distance to next expert point
+            distance_error = distance(
+                (self.state['lat'], self.state['lon']),
+                (expert_lat, expert_lon)
+            ) / 1852.0
             reward -= float(distance_error)
 
-        # Penalize overspeed moderately
+            # 2) Cross-track penalty
+            cross_track_error = cross_track_distance_nm(
+                (self.lat[self.time_step], self.lon[self.time_step]),
+                (expert_lat, expert_lon),
+                (self.state['lat'], self.state['lon'])
+            )
+            self.state['cross_track_nm'] = cross_track_error
+            reward -= float(cross_track_error)
+
+            # 3) Along-track progress reward
+            from geo.geo import along_track_distance
+            along_track_error = along_track_distance(
+                (self.lat[self.time_step], self.lon[self.time_step]),
+                (expert_lat, expert_lon),
+                (self.state['lat'], self.state['lon'])
+            ) / 1852.0
+            self.state['along_track_nm'] = along_track_error
+            reward += float(along_track_error) * 0.1  # small positive reward
+
+        # Penalize overspeed
         if self.state['speed_setpoint_kn'] > conf['max_speed_kn']:
             reward -= 0.01 * (self.state['speed_setpoint_kn'] - conf['max_speed_kn'])
 
-        # Small bonus if moving closer to the destination than the expert's current point
-        prev_rem_dist = distance((self.lat[self.time_step], self.lon[self.time_step]), self.destination) / 1852.0 \
-            if hasattr(self, 'lat') and len(self.lat) > self.time_step else self.state['remaining_distance_nm']
+        # Small bonus if moving closer to the destination than expert's current point
+        prev_rem_dist = distance(
+            (self.lat[self.time_step], self.lon[self.time_step]),
+            self.destination
+        ) / 1852.0 if hasattr(self, 'lat') and len(self.lat) > self.time_step else self.state['remaining_distance_nm']
+
         if self.state['remaining_distance_nm'] < prev_rem_dist:
             reward += 0.1
 
@@ -342,3 +372,4 @@ class VesselEnvironment:
 
         # Not done yet: return new observation
         return self.get_observation(), self.state, float(reward), False
+
