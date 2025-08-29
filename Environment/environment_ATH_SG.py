@@ -248,37 +248,26 @@ class VesselEnvironment:
         self.heading_deg = (self.heading_deg + float(delta_heading)) % 360.0
 
         # --- 3) Movement update ---
-        # Two compatible ways to move the vessel:
-        #  - Use dlon/dlat exactly (dataset-style: dlon/dlat are delta lon/lat)
-        #  - Or compute movement from heading+speed (distance traveled during timestep)
-        #
-        # We will apply dlon/dlat if they are non-zero (this keeps compatibility with your dataset
-        # which used dlon/dlat), and also accept heading+speed motion if desired. To be safe
-        # we use both: primary movement follows dlon/dlat, and we ensure the speed/heading
-        # are updated for realism.
-        #
-        # NOTE: dlon_action/dlat_action are assumed to be **degrees** (as in original dataset).
-        # If they are in other units, adjust conversion accordingly.
         prev_lon = float(self.state['lon'])
         prev_lat = float(self.state['lat'])
 
-        # Apply dlon/dlat movement (this matches how dataset appears to be structured)
+        # Apply dlon/dlat from action
         new_lon = prev_lon + float(dlon_action)
         new_lat = prev_lat + float(dlat_action)
 
-        # As a safeguard: if dlon/dlat are extremely small (close to 0), fallback to heading+speed movement
+        # Fallback to heading+speed only if dlon/dlat is extremely small
         if abs(dlon_action) < 1e-6 and abs(dlat_action) < 1e-6:
-            # Move according to heading + speed_setpoint
-            distance_nm = speed_setpoint * (conf['time_step_minutes'] / 60.0)  # nautical miles traveled in this step
-            # Convert nm to degrees latitude: 1 deg latitude ≈ 60 nm
-            dlat_from_speed = (distance_nm / 60.0) * np.cos(np.radians(self.heading_deg))
-            # degrees longitude depends on latitude
-            denom = max(1e-6, np.cos(np.radians(prev_lat)))
-            dlon_from_speed = (distance_nm / 60.0) * np.sin(np.radians(self.heading_deg)) / denom
-            new_lon = prev_lon + dlon_from_speed
-            new_lat = prev_lat + dlat_from_speed
+            distance_nm = speed_setpoint * (conf['time_step_minutes'] / 60.0)  # nautical miles
+            # Convert nm to degrees latitude
+            dlat_from_speed = distance_nm / 60.0
+            # Convert nm to degrees longitude using average latitude
+            avg_lat_rad = np.radians(prev_lat)
+            dlon_from_speed = distance_nm / (60.0 * np.cos(avg_lat_rad) + 1e-6)
+            # Project new position using heading
+            new_lat += dlat_from_speed * np.cos(np.radians(self.heading_deg))
+            new_lon += dlon_from_speed * np.sin(np.radians(self.heading_deg))
 
-        # Update timestamp and state geometry
+        # --- UPDATE STATE ---
         self.state['lon'] = float(new_lon)
         self.state['lat'] = float(new_lat)
         self.state['timestamp'] = int(self.state['timestamp'] + conf['time_step_minutes'])

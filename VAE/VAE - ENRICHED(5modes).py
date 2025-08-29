@@ -195,24 +195,25 @@ def train_vae(csv_file, num_modes=5, epochs=100, batch_size=128, learning_rate=1
 
     # --- Normalize observations manually using your function ---
     # normalize_observation expects a single row, so vectorize over all rows
+    # --- after loading/normalizing X and y ---
     X_scaled = np.array([normalize_observation(obs) for obs in X], dtype=np.float32)
     y_scaled = np.array([normalize_action(a) for a in y], dtype=np.float32)
 
-    input_dim = X_scaled.shape[1]  # number of features, e.g., 49
-    output_dim = input_dim  # VAE reconstructs same dimension
+    input_dim = X_scaled.shape[1]
+    output_dim = y_scaled.shape[1]  # <<--- 4 (delta_heading, speed_setpoint, dlon, dlat)
 
     # --- Build VAE model ---
     encoder = build_encoder(input_dim, num_modes)
-    decoder = build_decoder(num_modes, output_dim)
+    decoder = build_decoder(num_modes, output_dim)  # decoder now outputs actions
+
     optimizer = Adam(learning_rate)
 
     # --- Prepare TensorFlow dataset ---
-    dataset = (
-        tf.data.Dataset.from_tensor_slices(X_scaled)
-        .shuffle(10000)
-        .batch(batch_size)
-        .prefetch(tf.data.AUTOTUNE)
-    )
+    dataset = (tf.data.Dataset.from_tensor_slices((X_scaled, y_scaled))
+               .shuffle(10000)
+               .batch(batch_size)
+               .prefetch(tf.data.AUTOTUNE)
+               )
 
     # --- Environment (for reward logging only) ---
     env = VesselEnvironment()
@@ -224,7 +225,7 @@ def train_vae(csv_file, num_modes=5, epochs=100, batch_size=128, learning_rate=1
         steps = 0
         latent_history = []  # reset every epoch so plot = 1 trajectory
 
-        for step, batch_x in enumerate(dataset):
+        for step, (batch_x, batch_y) in enumerate(dataset):
             steps += 1
             # Sample expert action for env (reward logging only)
             action_idx = min(env.time_step, y.shape[0] - 1)
@@ -233,10 +234,10 @@ def train_vae(csv_file, num_modes=5, epochs=100, batch_size=128, learning_rate=1
             total_reward += float(reward)
 
             with tf.GradientTape() as tape:
-                logits = encoder(batch_x)
-                z = sample_gumbel_softmax(logits, temperature=0.7)
-                x_recon = decoder(z)
-                loss, recon, kl = vae_loss(batch_x, x_recon, logits)
+                logits = encoder(batch_x)                         # (batch, num_modes)
+                z = sample_gumbel_softmax(logits, temperature=0.7)  # (batch, num_modes)
+                act_recon = decoder(z)                            # (batch, output_dim) normalized actions
+                loss, recon, kl = vae_loss(batch_y, act_recon, logits)
 
             vars_ = encoder.trainable_variables + decoder.trainable_variables
             grads = tape.gradient(loss, vars_)
@@ -315,18 +316,20 @@ def test_vae(encoder, decoder, X_columns, num_trajectories=50, trajectory_length
             # --- forward pass through VAE ---
             logits = encoder(obs_scaled)
             z = sample_gumbel_softmax(logits, temperature=0.7, hard=True)
-            x_recon = decoder(z)
+            # logits -> z -> act_recon (normalized)
+            act_recon = decoder(z).numpy()[0]  # shape (4,)
 
-            # --- convert reconstruction to action ---
-            action = np.array([
-                float(x_recon[0, 0]),  # delta_heading
-                float(x_recon[0, 1]),  # speed_setpoint
-                float(x_recon[0, 2]),  # dlon
-                float(x_recon[0, 3])   # dlat
-            ])
+            # unnormalize properly
+            action_raw = unnormalize_action(act_recon)
 
             # --- take step in environment ---
-            state_norm, state_raw, reward, done = env.step(action)
+            # now action_raw is [delta_heading_deg, speed_setpoint_kn, dlon_deg, dlat_deg]
+            state_norm, state_raw, reward, done = env.step(action_raw)
+
+            if t % 50 == 0:
+                print(f"step {t} -> action_raw: {action_raw}, lat/lon: {state_raw['lat']},{state_raw['lon']}")
+
+
             traj_data.append(state_raw)
             traj_excel_data.append(copy.deepcopy(state_raw))
 

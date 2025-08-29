@@ -242,7 +242,7 @@ def unnormalize_observation(observation):
 def unnormalize_action(action):
     return [
         action[0]*myconfig['delta_heading_cmd_deg_std'] + myconfig['delta_heading_cmd_deg_avg'],
-        action[1]*myconfig['speed_setpoint_std'] + myconfig['speed_setpoint_kn_avg'],
+        action[1]*myconfig['speed_setpoint_kn_std'] + myconfig['speed_setpoint_kn_avg'],
         action[2] * myconfig['dlon_std'] + myconfig['dlon_avg'],
         action[3] * myconfig['dlat_std'] + myconfig['dlat_avg']
 
