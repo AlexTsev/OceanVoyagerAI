@@ -202,9 +202,15 @@ def train_vae(csv_file, num_modes=5, epochs=100, batch_size=128, learning_rate=1
     input_dim = X_scaled.shape[1]
     output_dim = y_scaled.shape[1]  # <<--- 4 (delta_heading, speed_setpoint, dlon, dlat)
 
+    #DEBUGGING
+    #print('INPUT DIM:',input_dim)
+    #print('OUTPUT DIM:',output_dim)
+
+    decoder_input = input_dim + num_modes
+
     # --- Build VAE model ---
     encoder = build_encoder(input_dim, num_modes)
-    decoder = build_decoder(num_modes, output_dim)  # decoder now outputs actions
+    decoder = build_decoder(decoder_input, output_dim)  # PATCH: decoder input = obs + latent
 
     optimizer = Adam(learning_rate)
 
@@ -218,14 +224,18 @@ def train_vae(csv_file, num_modes=5, epochs=100, batch_size=128, learning_rate=1
     # --- Environment (for reward logging only) ---
     env = VesselEnvironment()
     env.reset()
+    kl_anneal_epochs = 50  # number of epochs to reach full KL weight
 
     # --- Training loop ---
     for epoch in range(epochs):
+        # Linearly increase KL weight from 0 to 0.1
+        kl_weight = min(1.0, (epoch + 1) / kl_anneal_epochs) * 0.1  # start small, increase to 0.1
+
         total_loss = total_recon = total_kl = total_reward = 0.0
         steps = 0
         latent_history = []  # reset every epoch so plot = 1 trajectory
 
-        for step, (batch_x, batch_y) in enumerate(dataset):
+        for batch_x, batch_y in dataset:
             steps += 1
             # Sample expert action for env (reward logging only)
             action_idx = min(env.time_step, y.shape[0] - 1)
@@ -234,10 +244,15 @@ def train_vae(csv_file, num_modes=5, epochs=100, batch_size=128, learning_rate=1
             total_reward += float(reward)
 
             with tf.GradientTape() as tape:
-                logits = encoder(batch_x)                         # (batch, num_modes)
-                z = sample_gumbel_softmax(logits, temperature=0.7)  # (batch, num_modes)
-                act_recon = decoder(z)                            # (batch, output_dim) normalized actions
-                loss, recon, kl = vae_loss(batch_y, act_recon, logits)
+                logits = encoder(batch_x)  # (batch, num_modes)
+                z = sample_gumbel_softmax(logits, temperature=0.7, hard=True)  # (batch, num_modes)
+                #print('LOGITS_LAT:', z)
+
+                # PATCH: concatenate latent z with input obs before decoder
+                decoder_input = tf.concat([batch_x, z], axis=-1)  # shape: (batch, input_dim + num_modes)
+                act_recon = decoder(decoder_input)  # (batch, output_dim) normalized actions
+
+                loss, recon, kl = vae_loss(batch_y, act_recon, logits, kl_weight=kl_weight)
 
             vars_ = encoder.trainable_variables + decoder.trainable_variables
             grads = tape.gradient(loss, vars_)
@@ -315,9 +330,13 @@ def test_vae(encoder, decoder, X_columns, num_trajectories=50, trajectory_length
 
             # --- forward pass through VAE ---
             logits = encoder(obs_scaled)
-            z = sample_gumbel_softmax(logits, temperature=0.7, hard=True)
+            z = sample_gumbel_softmax(logits, temperature=0.7, hard=False)
+
+            # --- concatenate obs + z for decoder ---
+            decoder_input = np.concatenate([obs_scaled, z.numpy()], axis=-1)  # shape (1, obs_dim + num_modes)
+
             # logits -> z -> act_recon (normalized)
-            act_recon = decoder(z).numpy()[0]  # shape (4,)
+            act_recon = decoder(decoder_input).numpy()[0]  # shape (4,)
 
             # unnormalize properly
             action_raw = unnormalize_action(act_recon)
@@ -369,15 +388,22 @@ def test_withloaded_weights():
     X, y, X_columns = load_dataset(csv_file)
     # --- Normalize observations manually using your function ---
     # normalize_observation expects a single row, so vectorize over all rows
+    # --- after loading/normalizing X and y ---
     X_scaled = np.array([normalize_observation(obs) for obs in X], dtype=np.float32)
     y_scaled = np.array([normalize_action(a) for a in y], dtype=np.float32)
 
     input_dim = X_scaled.shape[1]
-    output_dim = input_dim
+    output_dim = y_scaled.shape[1]  # <<--- 4 (delta_heading, speed_setpoint, dlon, dlat)
 
-    # --- Build model ---
+    #DEBUGGING
+    #print('INPUT DIM:',input_dim)
+    #print('OUTPUT DIM:',output_dim)
+
+    decoder_input = input_dim + num_modes
+
+    # --- Build VAE model ---
     encoder = build_encoder(input_dim, num_modes)
-    decoder = build_decoder(num_modes, output_dim)
+    decoder = build_decoder(decoder_input, output_dim)  # PATCH: decoder input = obs + latent
 
     # Load trained weights
     encoder.load_weights("../checkpoints/model/encoder_final.h5")
@@ -394,7 +420,7 @@ if __name__ == '__main__':
     if not os.path.exists(csv_file):
         raise FileNotFoundError(f"Dataset not found at {csv_file}")
 
-    encoder, decoder, X_columns = train_vae(csv_file, num_modes=5, epochs=2000, batch_size=256)
+    encoder, decoder, X_columns = train_vae(csv_file, num_modes=5, epochs=200, batch_size=256)
     print("🤖🚢 Agent Vessel completed training!! 🚢")
     test_vae(encoder, decoder, X_columns, num_trajectories=50)
 
