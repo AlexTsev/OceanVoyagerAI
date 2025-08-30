@@ -224,7 +224,7 @@ def train_vae(csv_file, num_modes=5, epochs=100, batch_size=128, learning_rate=1
     # --- Environment (for reward logging only) ---
     env = VesselEnvironment()
     env.reset()
-    kl_anneal_epochs = 50  # number of epochs to reach full KL weight
+    kl_anneal_epochs = 1000  # number of epochs to reach full KL weight
 
     # --- Training loop ---
     for epoch in range(epochs):
@@ -345,8 +345,8 @@ def test_vae(encoder, decoder, X_columns, num_trajectories=50, trajectory_length
             # now action_raw is [delta_heading_deg, speed_setpoint_kn, dlon_deg, dlat_deg]
             state_norm, state_raw, reward, done = env.step(action_raw)
 
-            if t % 50 == 0:
-                print(f"step {t} -> action_raw: {action_raw}, lat/lon: {state_raw['lat']},{state_raw['lon']}")
+            #if t % 50 == 0:
+            #    print(f"step {t} -> action_raw: {action_raw}, lat/lon: {state_raw['lat']},{state_raw['lon']}")
 
 
             traj_data.append(state_raw)
@@ -420,7 +420,7 @@ if __name__ == '__main__':
     if not os.path.exists(csv_file):
         raise FileNotFoundError(f"Dataset not found at {csv_file}")
 
-    encoder, decoder, X_columns = train_vae(csv_file, num_modes=5, epochs=200, batch_size=256)
+    encoder, decoder, X_columns = train_vae(csv_file, num_modes=5, epochs=2000, batch_size=256)
     print("🤖🚢 Agent Vessel completed training!! 🚢")
     test_vae(encoder, decoder, X_columns, num_trajectories=50)
 
